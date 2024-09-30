@@ -1,5 +1,5 @@
 #Created by ignorant05 aka oussama baccara 
-#Credentials_Mannager v1.0
+#Credentials_Manager v1.0
 #Use the -h or --help flag for usage
 
 #! /usr/bin/env python3
