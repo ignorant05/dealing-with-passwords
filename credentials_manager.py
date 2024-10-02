@@ -1,7 +1,7 @@
 #Created by ignorant05 aka oussama baccara 
 
 
-#Credentials_Mannager v2.0
+#Credentials_Manager v2.0
 
 #Use the -h or --help flag for usage
 
