@@ -1,5 +1,7 @@
 #Created by ignorant05 aka oussama baccara 
-#Credentials_Manager v1.0
+
+#Credentials_Mannager v2.0
+
 #Use the -h or --help flag for usage
 
 #! /usr/bin/env python3
@@ -13,6 +15,8 @@ import ctypes
 import platform
 
 import argparse
+
+from datetime import datetime
 
 
 def check():
@@ -48,8 +52,7 @@ def change_file_ownership(path):
     try :
         
         os.chown(path, root_uid, root_gid)
-        print(f"[+] Changed ownership of {path} to root (UID: {root_uid}, GID: {root_gid}).")
-
+        os.chmod(path, 0o600)
     except PermissionError:
         print(f"[-] Permission denied. You need to run this script as root to change file ownership.")
         sys.exit(1)
@@ -59,18 +62,18 @@ def change_file_ownership(path):
         print(f"[-] File {path} not found.")
         sys.exit(1)
     except Exception as e:
-
         print(f"[-] An error occurred: {e}")
         sys.exit(1)
 
 
-
 def load_file(path):
+
 
     if not os.path.exists(path):
 
         with open(path, 'r+') as file:
             json.dump({"platforms": {}}, file, indent=4)
+
         return {"platforms": {}}
 
     try:
@@ -107,7 +110,7 @@ def save_file (path,data):
         print(f"\n[-] Something went wrong\n{e}")
 
 
-def show_credentials(path) :
+def show_all_credentials(path) :
 
     file = load_file(path)
     
@@ -117,24 +120,76 @@ def show_credentials(path) :
 
         p = platform.center(terminal_width)
 
-        print(f"{p}")
+        print(f"\n{'=' * terminal_width}")
+        print(f"{p.upper()}")
+        print(f"{'=' * terminal_width}\n")
 
-        for user in file['platforms'][platform]['users']:
-            
-            for key, value in user.items():
+        users = file['platforms'][platform]['users']
+        i=1
+        for arg in users:
+            print(f"{'$' * terminal_width}\n")
+            print(f"»»Account #{i} :\n")
+            print(f"{'$' * terminal_width}\n")
+            for a in arg :       
+                    
+                    for key , value in a.items():
+                        
+                        print(f"[&] {key.capitalize()}: {value} ")
+                    print(f"\n{'+' * terminal_width}")
+            i+=1
+                
+        print(f"{'=' * terminal_width}\n")
 
-                print(f"[×]  {key}: {value}")
-            print("\n")
+def show_one_cred(path, platform, username):
+
+    file = load_file(path)
+
+    terminal_width = shutil.get_terminal_size().columns
+
+    p = platform.center(terminal_width)
+
+    print(f"\n{'=' * terminal_width}")
+    print(f"{p.upper()}")
+    print(f"{'=' * terminal_width}\n")
+
+    user_found = False
+    
+    users = file['platforms'][platform]['users']
+    for user_list in users:
+        for item in user_list:
+            if "username" in item and item['username'].lower() == username.lower():
+                user_found = True
+                for item in user_list:
+                    for key, value in item.items():
+                        print(f"[&] {key.capitalize()}: {value}")
+                    print(f"\n{'+' * terminal_width}")
+                
+        if user_found:
+            break
+
+    if not user_found:
+        print(f"[-]User '{username}' doesn't exist in this platform.")
+        print("\n[?]Try again with a valid username.")
+        sys.exit(1)
+
+def get_last_change_time():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 
 def new_credentials(path, platform, username, email, password): 
 
     file = load_file(path) 
 
-    new_credentials = {
-            "username" : username ,
-            "email" : email ,
-            "password" : password
-            }  
+    new_credentials = [
+            {
+                "username" : username,
+                "Last time changed": get_last_change_time()},
+            {   "email" : email,
+                "Last time changed": get_last_change_time()},
+            {
+                "password" : password,
+                "Last time changed": get_last_change_time()}
+            ]
     
     platform = platform.lower()
 
@@ -153,56 +208,78 @@ def new_credentials(path, platform, username, email, password):
 
     
 
-def update_password(path, platform, username, old ,new):
-
-    file = load_file(path)
- 
+def update_password(path, platform, username, old_password, new_password):
+    file = load_file(path)  
     platform = platform.lower()
-    
+
     if platform in file['platforms']:
-
+        
         for user in file['platforms'][platform]['users']:
-
-            if user['username'].lower() == username.lower() and user['password'] == old :
-                
-                user['password'] = new
-                
-                save_file(path, file)
-
-                print(f"\n[+] Password updated for {username} on {platform.capitalize()}.")
-
-                return
             
-        print(f"[-] User {username} not found on {platform.capitalize()}.")
-    else:
-        print(f"[-] platform {platform.capitalize()} not found.")
+            found_username = False
+            found_password = False
 
+            
+            for item in user:
+                if "username" in item and item['username'].lower() == username.lower():
+                    found_username = True 
+                if "password" in item and item['password'] == old_password:
+                    found_password = True  
+
+           
+            if found_username and found_password:
+                for item in user:
+                    if "password" in item:
+                        item['password'] = new_password
+                        item['Last time changed'] = get_last_change_time() 
+
+                
+                save_file(path, file)  
+                
+                print(f"\n[+] Password updated for {username} on {platform.capitalize()}.")
+                return
+        
+        print(f"[-] User {username} not found or old password did not match on {platform.capitalize()}.")
+    else:
+        print(f"[-] Platform {platform.capitalize()} not found.")
 
     
 def update_username(path, platform, old, new):
 
-    file = load_file(path)
- 
+    file = load_file(path)  
     platform = platform.lower()
-    
+
     if platform in file['platforms']:
 
         for user in file['platforms'][platform]['users']:
-
-            if user['username'].lower() == old.lower():
-                
-                user['username'] = new
-                
-                
-                save_file(path, file)
-
-                print(f"\n[+] Username updated on {platform.capitalize()}.")
-
-                return
             
-        print(f"[-] Username {old} not found on {platform.capitalize()}.")
+            found_username = False
+            
+            if avoid_duplication(path,platform, user[0]['username'],new):
+                print(f"[-] Account is already in the {platform}.")
+                print("[-] Try again with another username and email.")
+                sys.exit(1)
+            
+            for item in user:
+                if "username" in item and item['username'].lower() == old.lower():
+                    found_username = True 
+                
+
+            if found_username :
+                for item in user:
+                    if "username" in item:
+                        item['username'] = new
+                        item['Last time changed'] = get_last_change_time() 
+
+                
+                save_file(path, file)  
+                
+                print(f"\n[+] Username {old} updated to {new} on {platform.capitalize()}.")
+                return
+
+        print(f"[-] User {username} not found on {platform.capitalize()}.")
     else:
-        print(f"[-] platform {platform.capitalize()} not found.")
+        print(f"[-] Platform {platform.capitalize()} not found.")
 
 
 
@@ -215,22 +292,34 @@ def update_email(path, platform, old, new):
     if platform in file['platforms']:
 
         for user in file['platforms'][platform]['users']:
-
-            if user['email'].lower() == old.lower():
-                
-                user['email'] = new
-                
-                
-                save_file(path, file)
-
-                print(f"\n[+] Email updated on {platform.capitalize()}.")
-
-                return
             
-        print(f"[-] Email {old} not found on {platform.capitalize()}.")
-    else:
-        print(f"[-] platform {platform.capitalize()} not found.")
+            found_email = False
+            
+            if avoid_duplication(path,platform, user[0]['username'],new):
+                print(f"[-] Account is already in the {platform}.")
+                print("[-] Try again with another username and email.")
+                sys.exit(1)
+                
+            for item in user:
+                if "email" in item and item['email'] == old:
+                    found_email = True 
+                
 
+            if found_email :
+                for item in user:
+                    if "email" in item:
+                        item['email'] = new
+                        item['Last time changed'] = get_last_change_time() 
+
+                
+                save_file(path, file)  
+                
+                print(f"\n[+] Email {old} updated to {new} on {platform.capitalize()}.")
+                return
+
+        print(f"[-] email {old} not found on {platform.capitalize()}.")
+    else:
+        print(f"[-] Platform {platform.capitalize()} not found.")
 
 def remove_account (path, platform, username):
 
@@ -240,12 +329,10 @@ def remove_account (path, platform, username):
 
     if platform in file['platforms']:
 
-        
-
         users = file['platforms'][platform]['users']
 
         updated_users = [user for user in users if not (
-               user['username'].lower() == username.lower()
+               user[0]['username'].lower() == username.lower()
                     )]
         if len(updated_users) == len(users):
 
@@ -264,6 +351,22 @@ def remove_account (path, platform, username):
 
         print(f"[-] platform {platform.capitalize()} not found.")
     
+def avoid_duplication (path, platform, username, email):
+
+    file = load_file(path)
+
+    platform = platform.lower()
+
+    if platform in file['platforms']:
+        for user in file['platforms'][platform]['users']:
+            # Check for duplicates in username and email
+            user_username = next((item['username'] for item in user if 'username' in item), None)
+            user_email = next((item['email'] for item in user if 'email' in item), None)
+            
+            if user_username == username and user_email == email:
+                return True  
+    return False  
+    
 
 
 
@@ -273,8 +376,8 @@ if __name__ == "__main__":
     check()
     tool_desc = """\
             A simple tool that manages your social media accounts in a secured way.\n
-            Usage: sudo python3 password_manager.py <path_to_password_file> <argument>.\n
-            Ex : sudo python3 password_manager.py credentials.json -a facebook john john_is_cool@gmail.com i_am_invincible\n
+            Usage: sudo python3 password_manager.py <path_to_password_file> <argument>.\n\n
+            Ex : sudo python3 password_manager.py credentials.json -a facebook john john_is_cool@gmail.com i_am_invincible\n\n
             >>> This command adds a new username, email, and password to the Facebook platform area.
             """
 
@@ -289,7 +392,7 @@ if __name__ == "__main__":
         nargs=3, 
         metavar=("platform", "old_username", "new_username"), 
         type=str,
-        help="Changes the username of an account"
+        help="Changes the username of an account : provide the platform, the old username and the new username."
     )
 
     parser.add_argument(
@@ -297,7 +400,7 @@ if __name__ == "__main__":
         nargs=3, 
         metavar=("platform", "old_email", "new_email"), 
         type=str,
-        help="Changes the email of an account"
+        help="Changes the email of an account : provide the platform, the old email and the new email."
     )
 
     parser.add_argument(
@@ -305,7 +408,7 @@ if __name__ == "__main__":
         nargs=4, 
         metavar=("platform", "username", "old_password", "new_password"), 
         type=str,
-        help="Changes the password of an account"
+        help="Changes the password of an account : provide the platform , username , old password and the new password."
     )
 
     parser.add_argument(
@@ -313,7 +416,7 @@ if __name__ == "__main__":
         nargs=2, 
         metavar=("platform", "username"), 
         type=str,
-        help="Deletes an accound credentials"
+        help="Deletes an account from a file: provide platform and username."
     )
 
     parser.add_argument(
@@ -321,19 +424,27 @@ if __name__ == "__main__":
         nargs=4, 
         metavar=("platform", "username", "email", "password"), 
         type=str,
-        help="Adds new credentials"
+        help="Add new credentials by providing respectively : platform, username, email and password."
+    )
+
+    parser.add_argument(
+        "-sa", "--show-all",
+        action="store_true",
+        help="Show all existing credentials"
     )
 
     parser.add_argument(
         "-s", "--show",
-        action="store_true",
-        help="Show content of the passwords file"
+        nargs=2, 
+        metavar=("platform", "username"), 
+        type=str,
+        help="show credentials of one specified account : provide the platform and the username."
     )
 
     parser.add_argument(
         "path",
         type=str,
-        help="Path to the JSON file where credentials are stored"
+        help="Path to the JSON file where credentials are stored."
     )
 
     args = parser.parse_args()
@@ -345,10 +456,15 @@ if __name__ == "__main__":
 
     path = args.path
 
+    
     change_file_ownership(path)
 
-    if args.show:
-        show_credentials(path)
+    if args.show_all:
+        show_all_credentials(path)
+
+    elif args.show:
+        platform, username = args.show
+        show_one_cred(path, platform, username)
 
     elif args.add:
         platform, username, email, password = args.add
@@ -369,3 +485,4 @@ if __name__ == "__main__":
     elif args.password:
         platform, username, old_password, new_password = args.password
         update_password(path, platform, username, old_password, new_password)
+        
