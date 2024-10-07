@@ -141,9 +141,9 @@ def generate_password(uppercase=False, lowercase=False, nums=False, punctuations
 if __name__=="__main__" :
 
     check()
-    tool_description = """This tool generates strong passwords based on user-selected options.
-                          You can select character sets (uppercase, lowercase, numbers, punctuation) 
-                          and specify a custom length and if you don't want some chars to be selected just use a flag and provide them."""
+    tool_description = """    This tool generates strong passwords based on user-selected options.
+    You can select character sets (uppercase, lowercase, numbers, punctuation) 
+    and specify a custom length and if you don't want some chars to be selected just use a flag and provide them."""
     
     parser = argparse.ArgumentParser(
 
